@@ -137,7 +137,16 @@ See [requirements.txt](./requirements.txt) for the complete list with versions.
 
 Feel free to open issues or submit pull requests if you find any problems or have suggestions for improvements.
 
-## 🙏 Acknowledgments
+## 📄 License
+
+This presentation uses a **dual license** structure:
+
+- **Slides** (`.key`/`.pdf` files): [CC BY-NC-ND 4.0](../LICENSE-SLIDES.md) - Cannot be reused without attribution
+- **Code** (notebooks, `.py` files): [MIT License](../LICENSE-CODE.md) - Free to use and modify
+
+**© 2025 Sammy Deprez** | See [root LICENSE](../LICENSE-SLIDES.md) for details.
+
+## � Acknowledgments
 
 Built with [LangChain](https://langchain.com) and [LangGraph](https://langchain-ai.github.io/langgraph/).
 

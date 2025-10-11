@@ -240,6 +240,15 @@ Built with [Azure Content Safety](https://azure.microsoft.com/en-us/products/ai-
 - [Azure OpenAI Content Filtering](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/content-filter)
 - [Responsible AI Principles](https://www.microsoft.com/en-us/ai/responsible-ai)
 
+## 📄 License
+
+This presentation uses a **dual license** structure:
+
+- **Slides** (`.key`/`.pdf` files): [CC BY-NC-ND 4.0](../LICENSE-SLIDES.md) - Cannot be reused without attribution
+- **Code** (notebooks, `.py` files): [MIT License](../LICENSE-CODE.md) - Free to use and modify
+
+**© 2025 Sammy Deprez** | See [root LICENSE](../LICENSE-SLIDES.md) for details.
+
 ---
 
 **Remember**: These tools are for building safer AI systems. Always use them responsibly and ethically. 🛡️
