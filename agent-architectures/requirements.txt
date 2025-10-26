@@ -1,7 +1,7 @@
-langchain-openai>=0.3.0,<1.0.0
-langgraph>=1.0.0,<2.0.0
-langchain>=1.0.0,<2.0.0
-langchain-core>=1.0.0,<2.0.0
-langgraph-supervisor>=0.0.29,<1.0.0
-langgraph-swarm>=0.0.14,<1.0.0
-langchain-tavily>=0.2.0,<1.0.0
+langchain-openai==1.0.1
+langgraph==1.0.1
+langchain==1.0.2
+langchain-core==1.0.1
+langgraph-supervisor==0.0.30
+langgraph-swarm==0.0.14
+langchain-tavily==0.2.12
