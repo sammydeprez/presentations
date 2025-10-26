@@ -1,0 +1,78 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 4. Reflection
+
+*Using Microsoft Semantic Kernel in C#*
+
+Implements a reflection pattern where agents review and improve their own outputs.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using DotNetEnv;
+
+Env.Load();
+var kernel = Kernel.CreateBuilder()
+    .AddAzureOpenAIChatCompletion(
+        "gpt-4o-mini",
+        Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT"),
+        Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY")
+    ).Build();
+
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Implement reflection loop
+
+#!csharp
+
+async Task<string> GenerateWithReflection(string prompt, int maxIterations = 2)
+{
+    // Initial generation
+    var chatHistory = new ChatHistory();
+    chatHistory.AddSystemMessage("You are a helpful assistant that generates high-quality content.");
+    chatHistory.AddUserMessage(prompt);
+    
+    var response = await chatService.GetChatMessageContentAsync(chatHistory);
+    var currentOutput = response.Content;
+    Console.WriteLine($"Initial Output:\\n{currentOutput}\\n");
+    
+    // Reflection loop
+    for (int i = 0; i < maxIterations; i++)
+    {
+        // Reflect
+        var reflectionHistory = new ChatHistory();
+        reflectionHistory.AddSystemMessage("You are a critic that provides constructive feedback.");
+        reflectionHistory.AddUserMessage($"Review this response and suggest improvements:\\n\\n{currentOutput}");
+        
+        var reflection = await chatService.GetChatMessageContentAsync(reflectionHistory);
+        Console.WriteLine($"Reflection {i + 1}:\\n{reflection.Content}\\n");
+        
+        // Improve
+        var improvementHistory = new ChatHistory();
+        improvementHistory.AddSystemMessage("You improve content based on feedback.");
+        improvementHistory.AddUserMessage(
+            $"Original prompt: {prompt}\\n\\nCurrent response: {currentOutput}\\n\\nFeedback: {reflection.Content}\\n\\nProvide an improved response:"
+        );
+        
+        var improved = await chatService.GetChatMessageContentAsync(improvementHistory);
+        currentOutput = improved.Content;
+        Console.WriteLine($"Improved Output {i + 1}:\\n{currentOutput}\\n");
+    }
+    
+    return currentOutput;
+}
+
+var final = await GenerateWithReflection("Write a short paragraph about the benefits of AI agents.");
+Console.WriteLine("\\n=== FINAL OUTPUT ===");
+Console.WriteLine(final);

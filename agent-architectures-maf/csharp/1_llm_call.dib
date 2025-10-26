@@ -1,0 +1,109 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 1. Simple LLM Call
+
+*Using Microsoft Semantic Kernel (Agent Framework) in C#*
+
+#!markdown
+
+An LLM call is the simplest agent that is there. It can not execute any actions, it only returns tokens that fit to your prompt.
+
+This notebook demonstrates the same concepts as the LangChain version, but using Microsoft Semantic Kernel in C#.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using DotNetEnv;
+
+#!markdown
+
+Load environment variables and initialize the kernel
+
+#!csharp
+
+// Load environment variables
+Env.Load();
+
+var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+var deploymentName = "gpt-4o-mini";
+
+// Create kernel builder
+var builder = Kernel.CreateBuilder();
+
+// Add Azure OpenAI Chat Completion service
+builder.AddAzureOpenAIChatCompletion(
+    deploymentName: deploymentName,
+    endpoint: endpoint,
+    apiKey: apiKey
+);
+
+// Build the kernel
+var kernel = builder.Build();
+
+#!markdown
+
+Get the chat completion service
+
+#!csharp
+
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Set up the chat history with system and user messages
+
+#!csharp
+
+var chatHistory = new ChatHistory();
+chatHistory.AddSystemMessage(
+    "You are a travel expert. Based on the user's input, suggest 1 travel destination."
+);
+chatHistory.AddUserMessage("Cat");
+
+#!markdown
+
+Call the LLM/agent
+
+#!csharp
+
+var response = await chatService.GetChatMessageContentAsync(
+    chatHistory,
+    kernel: kernel
+);
+
+// Add the response to chat history
+chatHistory.AddAssistantMessage(response.Content);
+
+#!markdown
+
+Print result
+
+#!csharp
+
+Console.WriteLine(response.Content);
+
+#!markdown
+
+Continue the conversation
+
+#!csharp
+
+chatHistory.AddUserMessage("I prefer warm places");
+
+response = await chatService.GetChatMessageContentAsync(
+    chatHistory,
+    kernel: kernel
+);
+
+chatHistory.AddAssistantMessage(response.Content);
+Console.WriteLine(response.Content);

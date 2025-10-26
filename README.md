@@ -4,7 +4,7 @@ Welcome to this collection of technical presentations on AI agent development an
 
 ## 📚 Presentations
 
-This repository contains two comprehensive presentations with accompanying Jupyter notebooks:
+This repository contains multiple comprehensive presentations with accompanying notebooks:
 
 ### 🤖 [Agent Architectures](./agent-architectures/)
 
@@ -23,6 +23,24 @@ Learn how to build intelligent agents using LangChain and LangGraph, progressing
 **[📖 View Full Documentation →](./agent-architectures/README.md)**
 
 **Technologies**: LangChain, LangGraph, Azure OpenAI, Tavily Search
+
+---
+
+### 🤖 [Agent Architectures - Microsoft Agent Framework](./agent-architectures-maf/)
+
+**Same agent patterns, Microsoft Semantic Kernel implementation.**
+
+This is a companion to the LangChain presentation above, implementing the same 8 architectural patterns using **Microsoft Semantic Kernel** (the Microsoft Agent Framework). Available in both **Python** and **C# polyglot notebooks**.
+
+**Key Features:**
+- Python and C# implementations side-by-side
+- Uses Microsoft Semantic Kernel instead of LangChain
+- Same architectural patterns for easy comparison
+- Polyglot notebooks for interactive C# development
+
+**[📖 View Full Documentation →](./agent-architectures-maf/README.md)**
+
+**Technologies**: Microsoft Semantic Kernel, Azure OpenAI, .NET, Python
 
 ---
 
@@ -130,6 +148,7 @@ We recommend completing both presentations to understand:
 ### Core Frameworks
 - **LangChain** - Framework for developing LLM applications
 - **LangGraph** - Building stateful, multi-actor applications
+- **Microsoft Semantic Kernel** - Microsoft's AI orchestration SDK
 - **Azure OpenAI** - Enterprise-grade LLM access
 - **Azure Content Safety** - Comprehensive safety services
 
@@ -137,6 +156,7 @@ We recommend completing both presentations to understand:
 - **Tavily Search** - Web search for AI agents
 - **Ollama** - Local LLM execution (optional)
 - **Jupyter** - Interactive notebooks
+- **Polyglot Notebooks** - Interactive C# notebooks
 - **httpx** - Modern HTTP client
 
 ## 📁 Repository Structure
@@ -144,7 +164,7 @@ We recommend completing both presentations to understand:
 ```
 presentations/
 ├── README.md                          # This file
-├── agent-architectures/               # Agent patterns presentation
+├── agent-architectures/               # Agent patterns with LangChain
 │   ├── README.md                      # Detailed documentation
 │   ├── .env-template                  # Environment configuration template
 │   ├── requirements.txt               # Python dependencies
@@ -160,6 +180,17 @@ presentations/
 │   ├── 8_planner.ipynb               # Planning agent
 │   └── docs/                          # Supporting images
 │
+├── agent-architectures-maf/           # Agent patterns with MS Semantic Kernel
+│   ├── README.md                      # Detailed documentation
+│   ├── .env-template                  # Environment configuration template
+│   ├── python/                        # Python notebooks
+│   │   ├── requirements.txt           # Python dependencies
+│   │   ├── 1_llm_call.ipynb          # Through 8_planner.ipynb
+│   │   └── ...                        # All 8 notebooks in Python
+│   └── csharp/                        # C# polyglot notebooks
+│       ├── 1_llm_call.dib            # Through 8_planner.dib
+│       └── ...                        # All 8 notebooks in C#
+│
 └── llm-safety-security/               # Safety & security presentation
     ├── README.md                      # Detailed documentation
     ├── .env-template                  # Environment configuration template
@@ -170,9 +201,9 @@ presentations/
 
 ## 🔑 Required API Keys
 
-### For Agent Architectures
+### For Agent Architectures (both LangChain and Semantic Kernel versions)
 - **Azure OpenAI**: Endpoint, API Key, and API Version
-- **Tavily API**: Key for web search (notebook 8 only)
+- **Tavily API**: Key for web search (notebook 8 only, LangChain version)
 
 ### For LLM Safety & Security
 - **Azure OpenAI**: Endpoint, API Key, and API Version

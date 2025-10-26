@@ -1,0 +1,68 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 5. Parallelism
+
+*Using Microsoft Semantic Kernel in C#*
+
+Execute multiple agent tasks in parallel for improved efficiency.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using DotNetEnv;
+
+Env.Load();
+var kernel = Kernel.CreateBuilder()
+    .AddAzureOpenAIChatCompletion(
+        "gpt-4o-mini",
+        Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT"),
+        Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY")
+    ).Build();
+
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Define parallel processing
+
+#!csharp
+
+async Task<string> ProcessQuery(string query, string agentRole)
+{
+    var chatHistory = new ChatHistory();
+    chatHistory.AddSystemMessage($"You are a {agentRole}.");
+    chatHistory.AddUserMessage(query);
+    
+    var response = await chatService.GetChatMessageContentAsync(chatHistory);
+    return response.Content;
+}
+
+async Task ParallelAnalysis(string topic)
+{
+    var tasks = new[]
+    {
+        ProcessQuery($"Analyze {topic} from a technical perspective", "technical expert"),
+        ProcessQuery($"Analyze {topic} from a business perspective", "business analyst"),
+        ProcessQuery($"Analyze {topic} from a UX perspective", "user experience designer")
+    };
+    
+    var results = await Task.WhenAll(tasks);
+    
+    Console.WriteLine("=== TECHNICAL EXPERT ===");
+    Console.WriteLine(results[0]);
+    Console.WriteLine("\\n=== BUSINESS ANALYST ===");
+    Console.WriteLine(results[1]);
+    Console.WriteLine("\\n=== UX DESIGNER ===");
+    Console.WriteLine(results[2]);
+}
+
+await ParallelAnalysis("AI-powered chatbots");

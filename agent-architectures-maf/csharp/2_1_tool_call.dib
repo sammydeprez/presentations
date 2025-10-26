@@ -1,0 +1,144 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 2.1 Using Tools
+
+*Using Microsoft Semantic Kernel (Agent Framework) in C#*
+
+#!markdown
+
+By binding tools or functions to your LLM, the model gets information about those tools, and it will tell you that it wants to execute a tool. Notice the LLM is not going to execute the tool, it's the server where the process is running. That same process will also return the result of those tools back to the LLM.
+
+This notebook demonstrates the same concepts as the LangChain version, but using Microsoft Semantic Kernel in C#.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.ComponentModel;
+using DotNetEnv;
+
+#!markdown
+
+Define the Weather Plugin
+
+#!csharp
+
+public class WeatherPlugin
+{
+    [KernelFunction, Description("Get the current weather for a specified location")]
+    public string GetWeather(
+        [Description("The name of the city. Must be one of: Chicago, New York, or Los Angeles")]
+        string location
+    )
+    {
+        var weatherData = new Dictionary<string, string>
+        {
+            { "New York", "Sunny, 25°C" },
+            { "Los Angeles", "Cloudy, 22°C" },
+            { "Chicago", "Rainy, 18°C" }
+        };
+        
+        return weatherData.TryGetValue(location, out var weather) 
+            ? weather 
+            : "Weather data not available for this location.";
+    }
+}
+
+#!markdown
+
+Initialize the kernel and add the weather plugin
+
+#!csharp
+
+// Load environment variables
+Env.Load();
+
+var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+var deploymentName = "gpt-4o-mini";
+
+// Create kernel builder
+var builder = Kernel.CreateBuilder();
+
+// Add Azure OpenAI Chat Completion service
+builder.AddAzureOpenAIChatCompletion(
+    deploymentName: deploymentName,
+    endpoint: endpoint,
+    apiKey: apiKey
+);
+
+// Add the weather plugin
+builder.Plugins.AddFromType<WeatherPlugin>();
+
+// Build the kernel
+var kernel = builder.Build();
+
+#!markdown
+
+Get the chat completion service
+
+#!csharp
+
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Set up the chat history
+
+#!csharp
+
+var chatHistory = new ChatHistory();
+chatHistory.AddSystemMessage(
+    "You are a helpful assistant that can provide weather information for specific cities."
+);
+chatHistory.AddUserMessage("What is the weather like in NYC?");
+
+#!markdown
+
+Call the LLM with automatic tool execution
+
+#!csharp
+
+// Configure execution settings to enable automatic function calling
+var executionSettings = new OpenAIPromptExecutionSettings
+{
+    FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+};
+
+// Get the response with automatic function calling
+var response = await chatService.GetChatMessageContentAsync(
+    chatHistory,
+    executionSettings,
+    kernel
+);
+
+chatHistory.Add(response);
+
+#!markdown
+
+Print the result
+
+#!csharp
+
+Console.WriteLine("Final response:");
+Console.WriteLine(response.Content);
+
+Console.WriteLine("\\nFull chat history:");
+foreach (var message in chatHistory)
+{
+    Console.WriteLine($"{message.Role}: {message.Content}");
+}
+
+#!markdown
+
+Notice how Semantic Kernel automatically handles the tool calls and returns the final response.
+
+**NOTE:** Usage of tools means 2 LLM calls, one to know what tool is necessary and second one containing the result of the tool call
