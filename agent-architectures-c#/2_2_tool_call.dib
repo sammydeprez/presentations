@@ -1,0 +1,102 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp","languageName":"csharp"},{"name":"fsharp","languageName":"F#","aliases":["f#","fs"]},{"name":"html","languageName":"HTML"},{"name":"http","languageName":"HTTP"},{"name":"javascript","languageName":"JavaScript","aliases":["js"]},{"name":"mermaid","languageName":"Mermaid"},{"name":"pwsh","languageName":"PowerShell","aliases":["powershell"]},{"name":"value"}]}}
+
+#!csharp
+
+#r "nuget: Azure.AI.OpenAI, 2.5.0-beta.1"
+#r "nuget: Microsoft.Agents.AI.OpenAI, 1.0.0-preview.251016.1"
+
+#!csharp
+
+var openAiEndpoint = new Uri("##ENDPOINT##");
+var openAiKey = "##API-KEY##";
+
+#!csharp
+
+using System.ComponentModel;
+using Azure.AI.OpenAI;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using OpenAI;
+using OpenAI.Chat;
+
+#!csharp
+
+static void PrettyPrint(Object message){
+    if (message is SystemChatMessage)
+    {
+        SystemChatMessage obj = (SystemChatMessage)message;
+        Console.WriteLine("=============================== System Message ===============================");
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+    }
+    else if (message is UserChatMessage)
+    {
+        UserChatMessage obj = (UserChatMessage)message;
+        Console.WriteLine("================================ User Message ================================");
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+    }
+    else if (message is AssistantChatMessage)
+    {
+        AssistantChatMessage obj = (AssistantChatMessage)message;
+        if (obj.ToolCalls.Count > 0)
+        {
+            Console.WriteLine("================================ Tool Calls ==================================");
+        }
+        else
+        {
+            Console.WriteLine("============================== Assistant Message =============================");
+        }
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+        foreach(var toolCall in obj.ToolCalls)
+        {
+            Console.WriteLine(toolCall.Id);
+            Console.WriteLine(toolCall.FunctionName);
+            Console.WriteLine(toolCall.FunctionArguments.ToString());
+        }
+    }
+    else if (message is ToolChatMessage)
+    {
+        ToolChatMessage obj = (ToolChatMessage)message;
+        Console.WriteLine("================================ Tool Message ================================");
+        Console.WriteLine(obj.ToolCallId);
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+    }else{
+        Console.WriteLine("Unknown message type");
+    }
+    Console.WriteLine();
+}
+
+#!csharp
+
+using System.ComponentModel;
+
+[Description("Get the weather for a given location.")]
+static string GetWeather([Description("The location to get the weather for.")] string location){
+    return $"The weather in {location} is cloudy with a high of 15°C.";
+}
+
+var openAIClient = new AzureOpenAIClient(openAiEndpoint, new Azure.AzureKeyCredential(openAiKey));
+var agent = openAIClient
+    .GetChatClient("gpt-4.1-mini")
+    .CreateAIAgent(instructions: "You are a helpful assistant", tools: [AIFunctionFactory.Create(GetWeather)]);
+
+#!csharp
+
+var result = await agent.RunAsync("What is the weather in New York");
+
+#!csharp
+
+result

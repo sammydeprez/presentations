@@ -1,0 +1,173 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp","languageName":"csharp"},{"name":"fsharp","languageName":"F#","aliases":["f#","fs"]},{"name":"html","languageName":"HTML"},{"name":"http","languageName":"HTTP"},{"name":"javascript","languageName":"JavaScript","aliases":["js"]},{"name":"mermaid","languageName":"Mermaid"},{"name":"pwsh","languageName":"PowerShell","aliases":["powershell"]},{"name":"value"}]}}
+
+#!csharp
+
+#r "nuget: Azure.AI.OpenAI"
+
+#!csharp
+
+var openAiEndpoint = new Uri("##ENDPOINT##");
+var openAiKey = "##API-KEY##";
+
+#!csharp
+
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
+
+#!csharp
+
+static void PrettyPrint(Object message){
+    if (message is SystemChatMessage)
+    {
+        SystemChatMessage obj = (SystemChatMessage)message;
+        Console.WriteLine("=============================== System Message ===============================");
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+    }
+    else if (message is UserChatMessage)
+    {
+        UserChatMessage obj = (UserChatMessage)message;
+        Console.WriteLine("================================ User Message ================================");
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+    }
+    else if (message is AssistantChatMessage)
+    {
+        AssistantChatMessage obj = (AssistantChatMessage)message;
+        if (obj.ToolCalls.Count > 0)
+        {
+            Console.WriteLine("================================ Tool Calls ==================================");
+        }
+        else
+        {
+            Console.WriteLine("============================== Assistant Message =============================");
+        }
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+        foreach(var toolCall in obj.ToolCalls)
+        {
+            Console.WriteLine(toolCall.Id);
+            Console.WriteLine(toolCall.FunctionName);
+            Console.WriteLine(toolCall.FunctionArguments.ToString());
+        }
+    }
+    else if (message is ToolChatMessage)
+    {
+        ToolChatMessage obj = (ToolChatMessage)message;
+        Console.WriteLine("================================ Tool Message ================================");
+        Console.WriteLine(obj.ToolCallId);
+        foreach(var content in obj.Content)
+        {
+            Console.WriteLine(content.Text);
+        }
+    }else{
+        Console.WriteLine("Unknown message type");
+    }
+    Console.WriteLine();
+}
+
+#!csharp
+
+var client = new AzureOpenAIClient(openAiEndpoint, new Azure.AzureKeyCredential(openAiKey));
+var chatClient = client.GetChatClient("gpt-4.1-mini");
+
+#!csharp
+
+static string GetWeather(string location)
+{
+    var weatherData = new Dictionary<string, string>
+    {
+        { "New York", "Sunny, 25°C" },
+        { "Los Angeles", "Cloudy, 22°C" },
+        { "Chicago", "Rainy, 18°C" }
+    };
+
+    return weatherData.ContainsKey(location) ? weatherData[location] : "Weather data not available for this location.";
+}
+
+ChatTool getCurrentWeather = ChatTool.CreateFunctionTool(
+    functionName: nameof(GetWeather),
+    functionDescription: "Get the current weather for a specified location.",
+    functionParameters: BinaryData.FromString("""
+    {
+        "type": "object",
+        "properties": {
+            "location": {
+                "type": "string",
+                "description": "The name of the city to get the weather for. Must be one of 'Chicago', 'New York', or 'Los Angeles'.",
+                "enum": ["Chicago", "New York", "Los Angeles"]
+            }
+        },
+        "required": ["location"]
+    }
+    """)
+);
+
+#!csharp
+
+ChatCompletionOptions options = new(){
+    Tools = { getCurrentWeather }
+};
+
+#!csharp
+
+using System.Text.Json;
+
+string GetToolCallContent(ChatToolCall toolCall)
+{
+    if (toolCall.FunctionName == getCurrentWeather.FunctionName)
+    {
+        // Validate arguments before using them; it's not always guaranteed to be valid JSON!
+        try
+        {
+            using JsonDocument argumentsDocument = JsonDocument.Parse(toolCall.FunctionArguments);
+            if (argumentsDocument.RootElement.TryGetProperty("location", out JsonElement locationElement))
+            {
+                string location = locationElement.GetString();
+                return GetWeather(location);
+            }
+        }
+        catch (JsonException)
+        {
+            // Handle the JsonException (bad arguments) here
+        }
+    }
+    // Handle unexpected tool calls
+    throw new NotImplementedException();
+}
+
+#!csharp
+
+var messages = new List<ChatMessage>{
+    new SystemChatMessage("You are a helpful assistant that can provide weather information for specific cities."),
+    new UserChatMessage("What is the weather like in NYC?")
+};
+
+#!csharp
+
+var response = chatClient.CompleteChat(messages, options);
+messages.Add(new AssistantChatMessage(response.Value));
+if (response.Value.FinishReason ==ChatFinishReason.ToolCalls){
+    foreach (var toolCall in response.Value.ToolCalls)
+    {
+        messages.Add(new ToolChatMessage(toolCall.Id, GetToolCallContent(toolCall)));
+    }
+    response = chatClient.CompleteChat(messages, options);
+    messages.Add(new AssistantChatMessage(response.Value.Content));
+}
+
+#!csharp
+
+// iterate over messages and print them
+foreach (var message in messages)
+{
+    PrettyPrint(message);
+}

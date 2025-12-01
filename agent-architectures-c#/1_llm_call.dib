@@ -1,0 +1,72 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp","languageName":"csharp"},{"name":"fsharp","languageName":"F#","aliases":["f#","fs"]},{"name":"html","languageName":"HTML"},{"name":"http","languageName":"HTTP"},{"name":"javascript","languageName":"JavaScript","aliases":["js"]},{"name":"mermaid","languageName":"Mermaid"},{"name":"pwsh","languageName":"PowerShell","aliases":["powershell"]},{"name":"value"}]}}
+
+#!csharp
+
+#r "nuget: Azure.AI.OpenAI"
+
+#!csharp
+
+var openAiEndpoint = new Uri("##ENDPOINT##");
+var openAiKey = "##API-KEY##";
+
+#!csharp
+
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
+
+#!csharp
+
+static void PrettyPrint(ChatMessage message){
+    if (message is SystemChatMessage)
+    {
+        Console.WriteLine("================================ System Message ================================");
+    }
+    else if (message is UserChatMessage)
+    {
+        Console.WriteLine("================================ User Message ================================");
+    }
+    else if (message is AssistantChatMessage)
+    {
+        Console.WriteLine("================================ Assistant Message ================================");
+    }
+    else if (message is ToolChatMessage)
+    {
+        Console.WriteLine("================================ Tool Message ================================");
+    }
+    else
+    {
+        Console.WriteLine("================================ Unknown Message Type ================================");
+    }
+
+    foreach(var content in message.Content)
+    {
+        Console.WriteLine(content.Text);
+    }
+}
+
+#!csharp
+
+var client = new AzureOpenAIClient(openAiEndpoint, new Azure.AzureKeyCredential(openAiKey));
+var chatClient = client.GetChatClient("gpt-4.1-mini");
+
+#!csharp
+
+var messages = new List<ChatMessage>{
+    new SystemChatMessage("You are a travel expert. Based on the user's input, suggest 1 travel destination."),
+    new UserChatMessage("Cat")
+};
+
+#!csharp
+
+var response = chatClient.CompleteChat(messages);
+messages.Add(new AssistantChatMessage(response.Value.Content));
+
+#!csharp
+
+// iterate over messages and print them
+foreach (var message in messages)
+{
+    PrettyPrint(message);
+}
