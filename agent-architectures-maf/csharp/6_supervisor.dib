@@ -1,0 +1,97 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 6. Supervisor
+
+*Using Microsoft Semantic Kernel in C#*
+
+Supervisor pattern coordinating specialized worker agents.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.ComponentModel;
+using DotNetEnv;
+
+#!markdown
+
+Define worker plugins
+
+#!csharp
+
+public class ResearchPlugin
+{
+    [KernelFunction, Description("Research a topic and provide information")]
+    public string Research([Description("Topic to research")] string topic) =>
+        $"Research results for {topic}: AI agents are autonomous systems that perceive, reason, and act.";
+}
+
+public class WriterPlugin
+{
+    [KernelFunction, Description("Write content based on research")]
+    public string Write([Description("Content to write about")] string content) =>
+        $"Article draft: {content} AI agents represent a significant advancement in automation.";
+}
+
+public class EditorPlugin
+{
+    [KernelFunction, Description("Edit and improve content")]
+    public string Edit([Description("Draft to edit")] string draft) =>
+        $"Edited version: {draft} [Improved clarity and structure]";
+}
+
+#!markdown
+
+Initialize supervisor
+
+#!csharp
+
+Env.Load();
+var builder = Kernel.CreateBuilder();
+builder.AddAzureOpenAIChatCompletion(
+    "gpt-4o-mini",
+    Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT"),
+    Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY")
+);
+builder.Plugins.AddFromType<ResearchPlugin>();
+builder.Plugins.AddFromType<WriterPlugin>();
+builder.Plugins.AddFromType<EditorPlugin>();
+
+var kernel = builder.Build();
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Execute supervisor workflow
+
+#!csharp
+
+async Task<string> SupervisorWorkflow(string task)
+{
+    var chatHistory = new ChatHistory();
+    chatHistory.AddSystemMessage(
+        "You are a supervisor that coordinates research, writing, and editing tasks. " +
+        "Use the available tools in sequence: first research, then write, then edit."
+    );
+    chatHistory.AddUserMessage(task);
+    
+    var settings = new OpenAIPromptExecutionSettings
+    {
+        FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+    };
+    
+    var response = await chatService.GetChatMessageContentAsync(chatHistory, settings, kernel);
+    return response.Content;
+}
+
+var result = await SupervisorWorkflow("Create an article about AI agents");
+Console.WriteLine("Supervisor Result:");
+Console.WriteLine(result);

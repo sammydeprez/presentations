@@ -1,0 +1,143 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 2.2 ReAct Agent
+
+*Using Microsoft Semantic Kernel (Agent Framework) in C#*
+
+#!markdown
+
+A simplified approach to tool-calling agents using the ReAct (Reasoning and Acting) pattern. This architecture streamlines the process shown in 2.1, automatically handling tool execution without manual intervention.
+
+This notebook demonstrates the same concepts as the LangChain version, but using Microsoft Semantic Kernel's automatic function calling in C#.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.ComponentModel;
+using DotNetEnv;
+
+#!markdown
+
+Define the Weather Plugin
+
+#!csharp
+
+public class WeatherPlugin
+{
+    [KernelFunction, Description("Get the current weather for a specified location")]
+    public string GetWeather(
+        [Description("The name of the city. Must be one of: Chicago, New York, or Los Angeles")]
+        string location
+    )
+    {
+        var weatherData = new Dictionary<string, string>
+        {
+            { "New York", "Sunny, 25°C" },
+            { "Los Angeles", "Cloudy, 22°C" },
+            { "Chicago", "Rainy, 18°C" }
+        };
+        
+        return weatherData.TryGetValue(location, out var weather) 
+            ? weather 
+            : "Weather data not available for this location.";
+    }
+}
+
+#!markdown
+
+Initialize the kernel and add the weather plugin
+
+#!csharp
+
+// Load environment variables
+Env.Load();
+
+var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+var deploymentName = "gpt-4o-mini";
+
+// Create kernel builder
+var builder = Kernel.CreateBuilder();
+
+// Add Azure OpenAI Chat Completion service
+builder.AddAzureOpenAIChatCompletion(
+    deploymentName: deploymentName,
+    endpoint: endpoint,
+    apiKey: apiKey
+);
+
+// Add the weather plugin
+builder.Plugins.AddFromType<WeatherPlugin>();
+
+// Build the kernel
+var kernel = builder.Build();
+
+#!markdown
+
+Get the chat completion service
+
+#!csharp
+
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Set up the chat history
+
+#!csharp
+
+var chatHistory = new ChatHistory();
+chatHistory.AddSystemMessage(
+    "You are a helpful assistant that can provide weather information for specific cities."
+);
+chatHistory.AddUserMessage("What is the weather like in NYC?");
+
+#!markdown
+
+Create the ReAct agent with automatic function calling
+
+#!csharp
+
+// Configure execution settings to enable automatic function calling (ReAct pattern)
+var executionSettings = new OpenAIPromptExecutionSettings
+{
+    FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+};
+
+// Execute the agent with automatic tool calling
+var response = await chatService.GetChatMessageContentAsync(
+    chatHistory,
+    executionSettings,
+    kernel
+);
+
+chatHistory.Add(response);
+
+#!markdown
+
+Print the result
+
+#!csharp
+
+Console.WriteLine("Agent Response:");
+Console.WriteLine(response.Content);
+
+Console.WriteLine("\\nFull Chat History:");
+foreach (var message in chatHistory)
+{
+    Console.WriteLine($"\\n{message.Role.ToString().ToUpper()}:");
+    Console.WriteLine(message.Content);
+}
+
+#!markdown
+
+**Note:** Semantic Kernel automatically implements the ReAct pattern through its automatic function calling behavior. The kernel reasons about which tools to use and acts by calling them automatically, similar to LangGraph's create_react_agent.

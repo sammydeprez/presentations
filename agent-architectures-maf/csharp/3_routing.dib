@@ -1,0 +1,105 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 3. Routing
+
+*Using Microsoft Semantic Kernel (Agent Framework) in C#*
+
+Demonstrates how to route requests to different specialized agents based on the input.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.ComponentModel;
+using DotNetEnv;
+
+#!markdown
+
+Define specialized plugins
+
+#!csharp
+
+public class WeatherPlugin
+{
+    [KernelFunction, Description("Get weather information for a city")]
+    public string GetWeather([Description("City name")] string location)
+    {
+        var weatherData = new Dictionary<string, string>
+        {
+            { "New York", "Sunny, 25°C" },
+            { "Los Angeles", "Cloudy, 22°C" },
+            { "Chicago", "Rainy, 18°C" }
+        };
+        return weatherData.TryGetValue(location, out var weather) ? weather : "Weather data not available.";
+    }
+}
+
+public class TravelPlugin
+{
+    [KernelFunction, Description("Get travel destination recommendations")]
+    public string GetDestination([Description("User interest or preference")] string interest)
+    {
+        if (interest.ToLower().Contains("beach")) return "Maldives - Beautiful beaches and crystal clear water";
+        if (interest.ToLower().Contains("mountain")) return "Swiss Alps - Stunning mountain views";
+        if (interest.ToLower().Contains("city")) return "Tokyo - Vibrant city life";
+        return "Paris - A versatile destination";
+    }
+}
+
+#!markdown
+
+Initialize kernel with plugins
+
+#!csharp
+
+Env.Load();
+var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+
+var builder = Kernel.CreateBuilder();
+builder.AddAzureOpenAIChatCompletion("gpt-4o-mini", endpoint, apiKey);
+builder.Plugins.AddFromType<WeatherPlugin>();
+builder.Plugins.AddFromType<TravelPlugin>();
+
+var kernel = builder.Build();
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Test routing
+
+#!csharp
+
+async Task<string> RouteQuery(string query)
+{
+    var chatHistory = new ChatHistory();
+    chatHistory.AddSystemMessage(
+        "You are a helpful assistant. Use the appropriate tool based on the user's question."
+    );
+    chatHistory.AddUserMessage(query);
+    
+    var settings = new OpenAIPromptExecutionSettings
+    {
+        FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+    };
+    
+    var response = await chatService.GetChatMessageContentAsync(chatHistory, settings, kernel);
+    return response.Content;
+}
+
+// Weather query
+Console.WriteLine("Weather Query:");
+Console.WriteLine(await RouteQuery("What's the weather in Chicago?"));
+Console.WriteLine();
+
+// Travel query
+Console.WriteLine("Travel Query:");
+Console.WriteLine(await RouteQuery("I want to visit a beach destination"));

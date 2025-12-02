@@ -1,0 +1,106 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 7. Swarm
+
+*Using Microsoft Semantic Kernel in C#*
+
+Swarm architecture with dynamic agent handoffs.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.ComponentModel;
+using DotNetEnv;
+
+#!markdown
+
+Define swarm agents
+
+#!csharp
+
+public class TechSupportAgent
+{
+    [KernelFunction, Description("Handle technical support questions")]
+    public string Handle([Description("Technical question")] string question) =>
+        $"Tech Support: For '{question}', please restart your device and check for updates.";
+}
+
+public class BillingAgent
+{
+    [KernelFunction, Description("Handle billing and payment questions")]
+    public string Handle([Description("Billing question")] string question) =>
+        $"Billing: Regarding '{question}', your next billing date is next month. No charges pending.";
+}
+
+public class SalesAgent
+{
+    [KernelFunction, Description("Handle sales and product inquiries")]
+    public string Handle([Description("Sales question")] string question) =>
+        $"Sales: For '{question}', we have premium and basic plans. Premium offers advanced features.";
+}
+
+#!markdown
+
+Initialize swarm
+
+#!csharp
+
+Env.Load();
+var builder = Kernel.CreateBuilder();
+builder.AddAzureOpenAIChatCompletion(
+    "gpt-4o-mini",
+    Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT"),
+    Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY")
+);
+builder.Plugins.AddFromType<TechSupportAgent>();
+builder.Plugins.AddFromType<BillingAgent>();
+builder.Plugins.AddFromType<SalesAgent>();
+
+var kernel = builder.Build();
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Test swarm
+
+#!csharp
+
+async Task<string> SwarmProcess(string query)
+{
+    var chatHistory = new ChatHistory();
+    chatHistory.AddSystemMessage(
+        "You coordinate a swarm of specialized agents (tech support, billing, sales). " +
+        "Route customer queries to the most appropriate agent."
+    );
+    chatHistory.AddUserMessage(query);
+    
+    var settings = new OpenAIPromptExecutionSettings
+    {
+        FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+    };
+    
+    var response = await chatService.GetChatMessageContentAsync(chatHistory, settings, kernel);
+    return response.Content;
+}
+
+var queries = new[] {
+    "My app keeps crashing",
+    "When is my next payment due?",
+    "What features are in the premium plan?"
+};
+
+foreach (var query in queries)
+{
+    Console.WriteLine($"Query: {query}");
+    Console.WriteLine($"Response: {await SwarmProcess(query)}");
+    Console.WriteLine();
+}

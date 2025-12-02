@@ -1,0 +1,107 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 8. Planner
+
+*Using Microsoft Semantic Kernel in C#*
+
+Planning agent that breaks down complex tasks into steps.
+
+#!csharp
+
+#r "nuget: Microsoft.SemanticKernel, 1.32.0"
+#r "nuget: DotNetEnv, 3.1.1"
+
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.ComponentModel;
+using DotNetEnv;
+
+#!markdown
+
+Define planning and execution tools
+
+#!csharp
+
+public class PlanningPlugin
+{
+    [KernelFunction, Description("Create a step-by-step plan for a task")]
+    public string CreatePlan([Description("Task to plan for")] string task) =>
+        $@"Plan for '{task}':
+1. Research the topic
+2. Gather necessary information
+3. Organize findings
+4. Create deliverable
+5. Review and finalize";
+}
+
+public class SearchPlugin
+{
+    [KernelFunction, Description("Search for information on a topic")]
+    public string Search([Description("Search query")] string query) =>
+        $"Search results for '{query}': Found relevant information about {query} including key concepts and best practices.";
+}
+
+public class ExecutionPlugin
+{
+    [KernelFunction, Description("Execute a single step from the plan")]
+    public string ExecuteStep([Description("Step to execute")] string step) =>
+        $"Executed: {step} - Completed successfully.";
+}
+
+#!markdown
+
+Initialize planner
+
+#!csharp
+
+Env.Load();
+var builder = Kernel.CreateBuilder();
+builder.AddAzureOpenAIChatCompletion(
+    "gpt-4o-mini",
+    Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT"),
+    Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY")
+);
+builder.Plugins.AddFromType<PlanningPlugin>();
+builder.Plugins.AddFromType<SearchPlugin>();
+builder.Plugins.AddFromType<ExecutionPlugin>();
+
+var kernel = builder.Build();
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+#!markdown
+
+Execute planner workflow
+
+#!csharp
+
+async Task<string> PlannerAgent(string goal)
+{
+    var chatHistory = new ChatHistory();
+    chatHistory.AddSystemMessage(
+        "You are a planning agent. Break down complex tasks into steps, " +
+        "search for needed information, and execute each step systematically. " +
+        "Use the available tools to create a plan, search for information, and execute steps."
+    );
+    chatHistory.AddUserMessage(goal);
+    
+    var settings = new OpenAIPromptExecutionSettings
+    {
+        FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+    };
+    
+    var response = await chatService.GetChatMessageContentAsync(chatHistory, settings, kernel);
+    return response.Content;
+}
+
+var result = await PlannerAgent("Research and summarize the benefits of microservices architecture");
+Console.WriteLine("Planner Agent Result:");
+Console.WriteLine(result);
+
+#!markdown
+
+**Note:** For production use, integrate with real search APIs like Bing Search for actual information retrieval.
